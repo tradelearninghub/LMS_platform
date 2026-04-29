@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment Variables
+.env
+.env.local
+**/.env
+**/.env.local
+
+# Build outputs
+dist/
+build/
+**/dist/
+
+# IDE / Logs
+.vscode/
+.idea/
+*.log
+.DS_Store
+
+# Agent / Metadata
+.agents/
+.gemini/
+skills-lock.json

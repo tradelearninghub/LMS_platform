@@ -1,0 +1,510 @@
+import { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
+
+export default function AdminPage() {
+  const [activeTab, setActiveTab] = useState("courses"); // 'courses', 'payments', 'users', 'settings'
+
+  // Courses Tab State
+  const [form, setForm] = useState({
+    title: "",
+    cover_image_url: "",
+    preview_video_url: "",
+    qr_image_url: "", // New QR field for specific course
+    video_title: "",
+    description: "",
+    curriculum: "",
+    price: "",
+  });
+  const [lockedUrls, setLockedUrls] = useState([{ title: "", url: "" }]);
+  const [submitStatus, setSubmitStatus] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [existingCourses, setExistingCourses] = useState([]);
+  
+  // Payments Tab State
+  const [pendingPayments, setPendingPayments] = useState([]);
+
+  // Settings Tab State
+  const [universalQr, setUniversalQr] = useState("");
+  const [settingsStatus, setSettingsStatus] = useState(null);
+
+  // Users Tab State
+  const [allUsersData, setAllUsersData] = useState([]);
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+    // Also fetch users and payments once at start for global stats if not already in that tab
+    if (activeTab !== "users" && activeTab !== "payments") {
+      fetchGlobalStatsData();
+    }
+  }, [activeTab]);
+
+  async function fetchGlobalStatsData() {
+    const { data: purchasesData } = await supabase.from('purchases').select('*');
+    const { data: paymentsData } = await supabase.from('payment_verifications').select('*');
+    const { data: coursesData } = await supabase.from('courses').select('id, title');
+    
+    if (purchasesData && paymentsData && coursesData) {
+      const usersMap = {};
+      paymentsData.forEach(p => {
+        if (p.status === 'approved') {
+          if (!usersMap[p.user_id]) usersMap[p.user_id] = { id: p.user_id, email: p.user_email, enrollments: [] };
+          const course = coursesData.find(c => c.id === p.course_id);
+          if (course) {
+            usersMap[p.user_id].enrollments.push({ amount: p.amount });
+          }
+        }
+      });
+      setAllUsersData(Object.values(usersMap));
+    }
+    
+    const { data: pendingData } = await supabase.from('payment_verifications').select('id').eq('status', 'pending');
+    if (pendingData) setPendingPayments(pendingData);
+  }
+
+  async function fetchData() {
+    setIsLoading(true);
+    if (activeTab === "courses") {
+      const { data } = await supabase.from('courses').select('*').order('created_at', { ascending: false });
+      if (data) setExistingCourses(data);
+    } else if (activeTab === "payments") {
+      // Fetch pending payments and join user email and course title
+      const { data, error } = await supabase
+        .from('payment_verifications')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        console.error("Error fetching payments:", error);
+      }
+        
+      if (data && !error) {
+        // Fetch courses separately to avoid Foreign Key relation issues since course_id is TEXT
+        const courseIds = [...new Set(data.map(p => p.course_id))];
+        const { data: coursesData } = await supabase
+          .from('courses')
+          .select('id, title')
+          .in('id', courseIds);
+
+        const paymentsWithCourses = data.map(p => ({
+          ...p,
+          course: coursesData?.find(c => c.id === p.course_id)
+        }));
+
+        setPendingPayments(paymentsWithCourses);
+      }
+    } else if (activeTab === "settings") {
+      const { data } = await supabase.from('platform_settings').select('*').eq('id', 1).single();
+      if (data) setUniversalQr(data.universal_qr_url || "");
+    } else if (activeTab === "users") {
+      const { data: purchasesData } = await supabase.from('purchases').select('*');
+      const { data: paymentsData } = await supabase.from('payment_verifications').select('*');
+      const { data: coursesData } = await supabase.from('courses').select('id, title');
+      
+      if (purchasesData && paymentsData && coursesData) {
+        const usersMap = {};
+        
+        paymentsData.forEach(p => {
+          if (p.status === 'approved') {
+            if (!usersMap[p.user_id]) {
+              usersMap[p.user_id] = { id: p.user_id, email: p.user_email, enrollments: {} };
+            }
+            const course = coursesData.find(c => c.id === p.course_id);
+            if (course) {
+              const hasAccess = purchasesData.some(pur => pur.user_id === p.user_id && pur.course_id === p.course_id);
+              const purchaseRecord = purchasesData.find(pur => pur.user_id === p.user_id && pur.course_id === p.course_id);
+              
+              usersMap[p.user_id].enrollments[p.course_id] = {
+                course_id: p.course_id,
+                course_title: course.title,
+                date: p.created_at,
+                amount: p.amount,
+                transaction_id: p.transaction_id,
+                has_access: hasAccess,
+                purchase_id: purchaseRecord ? purchaseRecord.id : null
+              };
+            }
+          }
+        });
+        
+        const formattedUsers = Object.values(usersMap).map(u => ({
+          ...u,
+          enrollments: Object.values(u.enrollments)
+        }));
+        setAllUsersData(formattedUsers);
+      }
+    }
+    setIsLoading(false);
+  }
+
+  // Calculate Stats
+  const totalUsers = allUsersData.length;
+  const totalRevenue = allUsersData.reduce((acc, user) => 
+    acc + user.enrollments.reduce((sum, enr) => sum + parseInt(enr.amount || 0), 0), 0
+  );
+  const pendingCount = pendingPayments.length;
+
+  // --- Courses Logic ---
+  const handleCourseChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleLockedUrlChange = (i, field, value) => {
+    const updated = [...lockedUrls];
+    updated[i][field] = value;
+    setLockedUrls(updated);
+  };
+  const addLockedUrl = () => setLockedUrls([...lockedUrls, { title: "", url: "" }]);
+  const removeLockedUrl = (i) => setLockedUrls(lockedUrls.filter((_, idx) => idx !== i));
+
+  const handleCreateCourse = async (e) => {
+    e.preventDefault();
+    const { data, error } = await supabase.from('courses').insert([{
+      title: form.title,
+      cover_image_url: form.cover_image_url,
+      preview_video_url: form.preview_video_url,
+      qr_image_url: form.qr_image_url,
+      video_title: form.video_title,
+      description: form.description,
+      curriculum: form.curriculum,
+      price: parseInt(form.price, 10),
+      locked_urls: lockedUrls.filter((u) => u.title && u.url)
+    }]).select();
+
+    if (error) {
+      setSubmitStatus("error");
+      setErrorMessage(error.message);
+      return;
+    }
+
+    setExistingCourses([...data, ...existingCourses]);
+    setSubmitStatus("success");
+    setForm({ title: "", cover_image_url: "", preview_video_url: "", qr_image_url: "", video_title: "", description: "", curriculum: "", price: "" });
+    setLockedUrls([{ title: "", url: "" }]);
+    setTimeout(() => setSubmitStatus(null), 3000);
+  };
+
+  const handleDeleteCourse = async (id) => {
+    if (!window.confirm("Delete this course?")) return;
+    const { error } = await supabase.from('courses').delete().eq('id', id);
+    if (!error) setExistingCourses(existingCourses.filter(c => c.id !== id));
+  };
+
+  // --- Settings Logic ---
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    const { error } = await supabase.from('platform_settings').upsert({ id: 1, universal_qr_url: universalQr });
+    if (!error) {
+      setSettingsStatus("success");
+      setTimeout(() => setSettingsStatus(null), 3000);
+    } else {
+      setSettingsStatus("error");
+    }
+  };
+
+  // --- Payments Logic ---
+  const handleApprovePayment = async (payment) => {
+    if (!window.confirm("Approve this payment and grant access?")) return;
+
+    // 1. Update verification status
+    await supabase.from('payment_verifications').update({ status: 'approved' }).eq('id', payment.id);
+    
+    // 2. Insert into purchases
+    await supabase.from('purchases').insert([{
+      user_id: payment.user_id,
+      course_id: payment.course_id
+    }]);
+
+    // 3. Send email via our backend
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/send-approval-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: payment.user_email,
+          courseTitle: payment.course?.title || "Your Course"
+        })
+      });
+    } catch (e) {
+      console.log("Failed to send email, but access granted", e);
+    }
+
+    setPendingPayments(pendingPayments.filter(p => p.id !== payment.id));
+    alert("Payment approved and access granted!");
+  };
+
+  const handleRejectPayment = async (paymentId) => {
+    if (!window.confirm("Reject this payment?")) return;
+    await supabase.from('payment_verifications').update({ status: 'rejected' }).eq('id', paymentId);
+    setPendingPayments(pendingPayments.filter(p => p.id !== paymentId));
+  };
+
+  // --- Users Logic ---
+  const handleToggleAccess = async (userId, courseId, currentAccess) => {
+    if (currentAccess) {
+      if (!window.confirm("Revoke access to this course?")) return;
+      await supabase.from('purchases').delete().eq('user_id', userId).eq('course_id', courseId);
+    } else {
+      if (!window.confirm("Grant access to this course?")) return;
+      await supabase.from('purchases').insert([{ user_id: userId, course_id: courseId }]);
+    }
+    fetchData(); // Refresh the data
+  };
+
+  const inputClasses = "w-full px-4 py-3 bg-surface-raised border border-border rounded-xl text-sm text-text-primary placeholder:text-text-muted/40 focus:border-accent/50 focus:outline-none transition-colors duration-300";
+  const labelClasses = "block text-xs font-medium text-text-muted uppercase tracking-widest mb-2";
+
+  return (
+    <div className="min-h-screen pt-32 pb-24 px-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-text-primary leading-tight">
+              Admin Dashboard
+            </h1>
+            <p className="text-text-muted mt-2">Manage your courses, payments, and students.</p>
+          </div>
+          
+          <div className="flex gap-4">
+            <div className="px-5 py-3 bg-surface-card border border-border rounded-2xl">
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Total Revenue</p>
+              <p className="text-xl font-semibold text-success">₹{totalRevenue.toLocaleString()}</p>
+            </div>
+            <div className="px-5 py-3 bg-surface-card border border-border rounded-2xl">
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Students</p>
+              <p className="text-xl font-semibold text-text-primary">{totalUsers}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-border mb-10 overflow-x-auto hide-scrollbar">
+          {["courses", "payments", "users", "settings"].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-3 text-sm font-medium tracking-wide uppercase whitespace-nowrap transition-colors border-b-2 ${
+                activeTab === tab ? "border-accent text-accent" : "border-transparent text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              {tab.replace("-", " ")}
+            </button>
+          ))}
+        </div>
+
+        {/* COURSES TAB */}
+        {activeTab === "courses" && (
+          <div className="animate-fade-in-up flex flex-col md:flex-row gap-12">
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold mb-6">Create New Course</h2>
+              {submitStatus === "success" && <div className="mb-6 p-4 bg-success/10 text-success rounded-xl text-sm">Course created!</div>}
+              {submitStatus === "error" && <div className="mb-6 p-4 bg-error/10 text-error rounded-xl text-sm">{errorMessage}</div>}
+              
+              <form onSubmit={handleCreateCourse} className="space-y-6">
+                <div>
+                  <label className={labelClasses}>Title</label>
+                  <input name="title" value={form.title} onChange={handleCourseChange} required className={inputClasses} />
+                </div>
+                <div>
+                  <label className={labelClasses}>Cover Image URL</label>
+                  <input name="cover_image_url" type="url" value={form.cover_image_url} onChange={handleCourseChange} required className={inputClasses} />
+                </div>
+                <div>
+                  <label className={labelClasses}>Preview Video URL (YouTube)</label>
+                  <input name="preview_video_url" type="url" value={form.preview_video_url} onChange={handleCourseChange} className={inputClasses} />
+                </div>
+                <div>
+                  <label className={labelClasses}>Custom QR Image URL (Optional)</label>
+                  <input name="qr_image_url" type="url" placeholder="Leave empty to use Universal QR" value={form.qr_image_url} onChange={handleCourseChange} className={inputClasses} />
+                </div>
+                <div>
+                  <label className={labelClasses}>Video Title</label>
+                  <input name="video_title" value={form.video_title} onChange={handleCourseChange} required className={inputClasses} />
+                </div>
+                <div>
+                  <label className={labelClasses}>Description</label>
+                  <textarea name="description" value={form.description} onChange={handleCourseChange} required rows={3} className={inputClasses} />
+                </div>
+                <div>
+                  <label className={labelClasses}>Curriculum (One module per line)</label>
+                  <textarea name="curriculum" value={form.curriculum} onChange={handleCourseChange} required rows={4} className={inputClasses} />
+                </div>
+                <div>
+                  <label className={labelClasses}>Price (₹)</label>
+                  <input name="price" type="number" value={form.price} onChange={handleCourseChange} required className={inputClasses} />
+                </div>
+                
+                <div>
+                  <div className="flex justify-between mb-4">
+                    <label className={labelClasses}>Video Links</label>
+                    <button type="button" onClick={addLockedUrl} className="text-xs text-accent">+ Add Link</button>
+                  </div>
+                  <div className="space-y-3">
+                    {lockedUrls.map((entry, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input type="text" placeholder="Title" value={entry.title} onChange={(e) => handleLockedUrlChange(i, "title", e.target.value)} className={inputClasses} />
+                        <input type="url" placeholder="URL" value={entry.url} onChange={(e) => handleLockedUrlChange(i, "url", e.target.value)} className={inputClasses} />
+                        {lockedUrls.length > 1 && <button type="button" onClick={() => removeLockedUrl(i)} className="text-error px-2">X</button>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <button type="submit" className="w-full py-3 bg-accent text-surface font-semibold rounded-xl hover:bg-accent-hover transition-colors">Publish</button>
+              </form>
+            </div>
+
+            <div className="flex-1">
+               <h2 className="text-xl font-semibold mb-6">Published Courses</h2>
+               {isLoading ? <p className="text-text-muted">Loading...</p> : (
+                 <div className="space-y-4">
+                   {existingCourses.map(c => (
+                     <div key={c.id} className="p-4 border border-border rounded-xl flex justify-between items-center">
+                       <div>
+                         <h3 className="font-medium text-sm">{c.title}</h3>
+                         <p className="text-xs text-text-muted">₹{c.price}</p>
+                       </div>
+                       <button onClick={() => handleDeleteCourse(c.id)} className="text-xs text-error hover:underline">Delete</button>
+                     </div>
+                   ))}
+                 </div>
+               )}
+            </div>
+          </div>
+        )}
+
+        {/* PAYMENTS TAB */}
+        {activeTab === "payments" && (
+          <div className="animate-fade-in-up">
+            <h2 className="text-xl font-semibold mb-6">Pending Verifications</h2>
+            {isLoading ? <p className="text-text-muted">Loading...</p> : pendingPayments.length === 0 ? (
+              <p className="text-text-muted">No pending payments.</p>
+            ) : (
+              <div className="grid gap-4">
+                {pendingPayments.map(p => (
+                  <div key={p.id} className="p-6 border border-border rounded-xl bg-surface-card flex flex-col md:flex-row justify-between md:items-center gap-6">
+                    <div>
+                      <p className="text-xs text-accent mb-1">{p.course?.title || "Unknown Course"}</p>
+                      <h3 className="font-medium text-lg mb-2">{p.sender_name}</h3>
+                      <div className="text-sm text-text-muted space-y-1">
+                        <p>User Email: <span className="text-text-primary">{p.user_email}</span></p>
+                        <p>Tx ID: <span className="text-text-primary font-mono">{p.transaction_id}</span></p>
+                        <p>Amount Paid: <span className="text-success font-medium">₹{p.amount}</span></p>
+                        <p>Date: {new Date(p.created_at).toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={() => handleApprovePayment(p)} className="px-4 py-2 bg-success text-white rounded-lg text-sm font-medium hover:bg-success/90">
+                        Approve & Grant Access
+                      </button>
+                      <button onClick={() => handleRejectPayment(p.id)} className="px-4 py-2 bg-error/10 text-error rounded-lg text-sm font-medium hover:bg-error/20">
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* USERS TAB */}
+        {activeTab === "users" && (
+          <div className="animate-fade-in-up">
+            <h2 className="text-xl font-semibold mb-6">User Management</h2>
+            {isLoading ? <p className="text-text-muted">Loading...</p> : allUsersData.length === 0 ? (
+              <p className="text-text-muted">No users found.</p>
+            ) : (
+              <div className="grid gap-6">
+                {allUsersData.map(user => (
+                  <div key={user.id} className="p-6 border border-border rounded-xl bg-surface-card flex flex-col gap-4">
+                    <div>
+                      <h3 className="font-medium text-lg text-text-primary">{user.email}</h3>
+                      <p className="text-xs text-text-muted">ID: {user.id}</p>
+                    </div>
+                    
+                    {user.enrollments.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                          <thead>
+                            <tr className="border-b border-border/50">
+                              <th className="pb-2 font-medium text-text-muted">Course</th>
+                              <th className="pb-2 font-medium text-text-muted">Tx ID</th>
+                              <th className="pb-2 font-medium text-text-muted">Amount</th>
+                              <th className="pb-2 font-medium text-text-muted">Date</th>
+                              <th className="pb-2 font-medium text-text-muted">Access Status</th>
+                              <th className="pb-2 font-medium text-text-muted text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {user.enrollments.map(enr => (
+                              <tr key={enr.course_id} className="border-b border-border/30 last:border-0">
+                                <td className="py-3 text-text-secondary font-medium">{enr.course_title}</td>
+                                <td className="py-3 text-text-muted font-mono text-xs">{enr.transaction_id}</td>
+                                <td className="py-3 text-success font-medium">₹{enr.amount}</td>
+                                <td className="py-3 text-text-muted">{new Date(enr.date).toLocaleDateString()}</td>
+                                <td className="py-3">
+                                  {enr.has_access ? (
+                                    <span className="inline-block px-2 py-1 bg-success/10 text-success rounded text-[10px] font-bold uppercase tracking-wider">Active</span>
+                                  ) : (
+                                    <span className="inline-block px-2 py-1 bg-error/10 text-error rounded text-[10px] font-bold uppercase tracking-wider">Revoked</span>
+                                  )}
+                                </td>
+                                <td className="py-3 text-right">
+                                  <button 
+                                    onClick={() => handleToggleAccess(user.id, enr.course_id, enr.has_access)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                      enr.has_access 
+                                      ? "bg-error/10 text-error hover:bg-error/20" 
+                                      : "bg-success/10 text-success hover:bg-success/20"
+                                    }`}
+                                  >
+                                    {enr.has_access ? "Revoke Access" : "Grant Access"}
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-text-muted">No enrollments found for this user.</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SETTINGS TAB */}
+        {activeTab === "settings" && (
+          <div className="animate-fade-in-up max-w-lg">
+            <h2 className="text-xl font-semibold mb-6">Payment Settings</h2>
+            {settingsStatus === "success" && <div className="mb-6 p-4 bg-success/10 text-success rounded-xl text-sm">Settings saved!</div>}
+            
+            <form onSubmit={handleSaveSettings} className="space-y-6">
+              <div>
+                <label className={labelClasses}>Universal QR Code Image URL</label>
+                <input 
+                  type="url" 
+                  value={universalQr} 
+                  onChange={(e) => setUniversalQr(e.target.value)} 
+                  placeholder="https://example.com/my-upi-qr.jpg" 
+                  className={inputClasses} 
+                />
+                <p className="text-xs text-text-muted mt-2">This QR code will be shown for all courses during checkout, unless a course has its own custom QR code set.</p>
+              </div>
+              
+              {universalQr && (
+                <div className="mt-4 p-4 border border-border rounded-xl inline-block bg-white">
+                  <img src={universalQr} alt="Universal QR" className="w-48 h-48 object-contain" />
+                </div>
+              )}
+
+              <button type="submit" className="w-full py-3 bg-accent text-surface font-semibold rounded-xl hover:bg-accent-hover transition-colors">Save Settings</button>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
