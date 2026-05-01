@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 export default function LandingPage() {
   const { user } = useAuth();
   const [latestCourses, setLatestCourses] = useState([]);
+  const [purchasedCourseIds, setPurchasedCourseIds] = useState([]);
 
   useEffect(() => {
     async function fetchCourses() {
@@ -18,14 +19,19 @@ export default function LandingPage() {
       if (data) {
         setLatestCourses(data);
       }
+    async function fetchPurchases() {
+      if (!user) return;
+      const { data } = await supabase.from('purchases').select('course_id').eq('user_id', user.id);
+      if (data) setPurchasedCourseIds(data.map(p => p.course_id));
     }
+
     fetchCourses();
-  }, []);
+    fetchPurchases();
+  }, [user]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 pt-32 md:pt-16 relative overflow-hidden">
-      {/* Subtle radial glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent/[0.03] rounded-full blur-3xl pointer-events-none" />
+      {/* Glow removed */}
 
       <div className="relative text-left max-w-6xl mx-auto w-full animate-fade-in-up">
         <div className="flex flex-col md:flex-row items-center gap-12">
@@ -115,7 +121,7 @@ export default function LandingPage() {
                     alt={course.title} 
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-surface-card to-transparent" />
+                  {/* Overlay removed */}
                   <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5">
                     {course.original_price && course.original_price > course.price && (
                       <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-success text-white rounded-md shadow-sm">
@@ -152,12 +158,21 @@ export default function LandingPage() {
                     </ul>
                   </div>
                   
-                  <Link 
-                    to={`/courses/${course.id}`}
-                    className="block w-full py-4 bg-accent/10 text-accent text-center rounded-xl font-medium hover:bg-accent hover:text-surface transition-all duration-300"
-                  >
-                    Join Now
-                  </Link>
+                  {purchasedCourseIds.includes(course.id) ? (
+                    <div className="pt-4 border-t border-border mt-auto">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-success">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                        Purchased & Unlocked
+                      </span>
+                    </div>
+                  ) : (
+                    <Link 
+                      to={`/courses/${course.id}`}
+                      className="block w-full py-4 bg-accent/10 text-accent text-center rounded-xl font-medium hover:bg-accent hover:text-surface transition-all duration-300"
+                    >
+                      Join Now
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}
@@ -217,7 +232,6 @@ function WhyChooseCard({ item }) {
           alt={item.title} 
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-surface/40 to-transparent" />
       </div>
       
       <h3 className="text-xl font-semibold text-text-primary mb-3 group-hover:text-accent transition-colors">

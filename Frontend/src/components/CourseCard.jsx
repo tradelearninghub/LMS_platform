@@ -36,11 +36,8 @@ export default function CourseCard({ course, isPurchased = false }) {
           <div className="absolute inset-0 bg-gradient-to-t from-surface-card via-transparent to-transparent" />
 
           {/* Badge */}
-          {isPurchased ? (
-            <span className="absolute top-4 right-4 px-3 py-1 text-xs font-medium tracking-wide uppercase bg-success/15 text-success border border-success/20 rounded-full backdrop-blur-sm">
-              Purchased
-            </span>
-          ) : (
+          {/* Badge (Only for Price) */}
+          {!isPurchased && (
             <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5">
               {discountPercent > 0 && (
                 <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-success text-white rounded-md shadow-sm">
@@ -64,9 +61,18 @@ export default function CourseCard({ course, isPurchased = false }) {
           <h3 className="text-lg font-semibold tracking-tight text-text-primary leading-snug mb-2 group-hover:text-accent transition-colors duration-300">
             {course.title}
           </h3>
-          <p className="text-sm text-text-muted leading-relaxed line-clamp-2">
+          <p className="text-sm text-text-muted leading-relaxed line-clamp-2 mb-4">
             {course.description}
           </p>
+
+          {isPurchased && (
+            <div className="pt-4 border-t border-border mt-auto">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-success">
+                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                Purchased & Unlocked
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </Link>
