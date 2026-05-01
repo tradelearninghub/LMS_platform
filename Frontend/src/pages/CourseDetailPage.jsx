@@ -91,6 +91,12 @@ export default function CourseDetailPage() {
     maximumFractionDigits: 0,
   }).format(course.price);
 
+  const formattedOriginalPrice = course.original_price ? new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(course.original_price) : null;
+
   const curriculumLines = course.curriculum.split("\n").filter(Boolean);
 
   const handleBuyNow = () => {
@@ -223,9 +229,14 @@ export default function CourseDetailPage() {
         {/* Sticky Purchase Bar */}
         <div className="fixed bottom-0 left-0 right-0 bg-surface/90 backdrop-blur-xl border-t border-border py-4 px-6 z-40">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <div>
-              <p className="text-sm text-text-muted">Full access</p>
-              <p className="text-xl font-semibold text-text-primary tracking-tight">{formattedPrice}</p>
+            <div className="flex flex-col">
+              <p className="text-[10px] text-text-muted uppercase tracking-widest font-bold mb-0.5">Full access</p>
+              <div className="flex items-center gap-3">
+                <p className="text-2xl font-bold text-text-primary tracking-tight">{formattedPrice}</p>
+                {formattedOriginalPrice && (
+                  <p className="text-sm text-text-muted line-through decoration-text-muted/50">{formattedOriginalPrice}</p>
+                )}
+              </div>
             </div>
             <button
               onClick={handleBuyNow}

@@ -7,6 +7,12 @@ export default function CourseCard({ course, isPurchased = false }) {
     maximumFractionDigits: 0,
   }).format(course.price);
 
+  const formattedOriginalPrice = course.original_price ? new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(course.original_price) : null;
+
   return (
     <Link
       to={isPurchased ? `/dashboard/course/${course.id}` : `/courses/${course.id}`}
@@ -31,9 +37,16 @@ export default function CourseCard({ course, isPurchased = false }) {
               Purchased
             </span>
           ) : (
-            <span className="absolute top-4 right-4 px-3 py-1 text-xs font-medium tracking-wide bg-surface/70 text-text-primary border border-border rounded-full backdrop-blur-sm">
-              {formattedPrice}
-            </span>
+            <div className="absolute top-4 right-4 flex flex-col items-end gap-1">
+              <span className="px-3 py-1 text-xs font-semibold tracking-wide bg-accent text-surface border border-accent rounded-full backdrop-blur-sm shadow-lg shadow-accent/20">
+                {formattedPrice}
+              </span>
+              {formattedOriginalPrice && (
+                <span className="px-2 py-0.5 text-[10px] font-medium text-text-muted bg-surface/70 border border-border rounded-full backdrop-blur-sm line-through">
+                  {formattedOriginalPrice}
+                </span>
+              )}
+            </div>
           )}
         </div>
 

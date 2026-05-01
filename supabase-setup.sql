@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS courses (
   video_title text,
   curriculum text,
   price numeric,
+  original_price numeric,
   locked_urls jsonb DEFAULT '[]'::jsonb
 );
 
@@ -69,3 +70,6 @@ USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert own verification" ON payment_verifications FOR INSERT 
 WITH CHECK (auth.uid() = user_id);
+
+-- 4. Updates
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS original_price numeric;

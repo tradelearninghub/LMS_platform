@@ -14,6 +14,7 @@ export default function AdminPage() {
     description: "",
     curriculum: "",
     price: "",
+    original_price: "",
   });
   const [lockedUrls, setLockedUrls] = useState([{ title: "", url: "" }]);
   const [submitStatus, setSubmitStatus] = useState(null);
@@ -167,6 +168,7 @@ export default function AdminPage() {
       description: form.description,
       curriculum: form.curriculum,
       price: parseInt(form.price, 10),
+      original_price: form.original_price ? parseInt(form.original_price, 10) : null,
       locked_urls: lockedUrls.filter((u) => u.title && u.url)
     }]).select();
 
@@ -178,7 +180,7 @@ export default function AdminPage() {
 
     setExistingCourses([...data, ...existingCourses]);
     setSubmitStatus("success");
-    setForm({ title: "", cover_image_url: "", preview_video_url: "", qr_image_url: "", video_title: "", description: "", curriculum: "", price: "" });
+    setForm({ title: "", cover_image_url: "", preview_video_url: "", qr_image_url: "", video_title: "", description: "", curriculum: "", price: "", original_price: "" });
     setLockedUrls([{ title: "", url: "" }]);
     setTimeout(() => setSubmitStatus(null), 3000);
   };
@@ -328,9 +330,15 @@ export default function AdminPage() {
                   <label className={labelClasses}>Curriculum (One module per line)</label>
                   <textarea name="curriculum" value={form.curriculum} onChange={handleCourseChange} required rows={4} className={inputClasses} />
                 </div>
-                <div>
-                  <label className={labelClasses}>Price (₹)</label>
-                  <input name="price" type="number" value={form.price} onChange={handleCourseChange} required className={inputClasses} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClasses}>Selling Price (₹)</label>
+                    <input name="price" type="number" value={form.price} onChange={handleCourseChange} required className={inputClasses} placeholder="Actual pay amount" />
+                  </div>
+                  <div>
+                    <label className={labelClasses}>Original Price (₹) - Optional</label>
+                    <input name="original_price" type="number" value={form.original_price} onChange={handleCourseChange} className={inputClasses} placeholder="Struck-through price" />
+                  </div>
                 </div>
                 
                 <div>
@@ -360,7 +368,12 @@ export default function AdminPage() {
                      <div key={c.id} className="p-4 border border-border rounded-xl flex justify-between items-center">
                        <div>
                          <h3 className="font-medium text-sm">{c.title}</h3>
-                         <p className="text-xs text-text-muted">₹{c.price}</p>
+                         <div className="flex gap-2 items-center">
+                           <p className="text-xs font-semibold text-text-primary">₹{c.price}</p>
+                           {c.original_price && (
+                             <p className="text-[10px] text-text-muted line-through">₹{c.original_price}</p>
+                           )}
+                         </div>
                        </div>
                        <button onClick={() => handleDeleteCourse(c.id)} className="text-xs text-error hover:underline">Delete</button>
                      </div>

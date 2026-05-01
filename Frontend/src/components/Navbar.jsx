@@ -29,6 +29,12 @@ export default function Navbar() {
           >
             Courses
           </Link>
+          <Link
+            to="/research"
+            className="text-sm text-text-secondary hover:text-text-primary transition-colors duration-300"
+          >
+            Research
+          </Link>
 
           {user && (
             <Link
