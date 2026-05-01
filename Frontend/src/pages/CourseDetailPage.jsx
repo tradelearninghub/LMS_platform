@@ -173,33 +173,12 @@ export default function CourseDetailPage() {
           </div>
         </div>
 
-        {/* Video Preview / Cover */}
         <div className="relative aspect-video rounded-3xl overflow-hidden border border-border shadow-2xl shadow-accent/5 mb-16 group">
           <img
             src={course.cover_image_url || "https://images.unsplash.com/photo-1590283603385-18ffb2a40c27?auto=format&fit=crop&w=1200&q=80"}
             alt={course.title}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-surface/40 backdrop-blur-[2px] flex items-center justify-center transition-all duration-300 group-hover:bg-surface/20 group-hover:backdrop-blur-none">
-            {course.preview_video_url ? (
-              <a
-                href={course.preview_video_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-20 h-20 bg-accent/90 text-surface rounded-full flex items-center justify-center hover:bg-accent hover:scale-110 transition-all shadow-xl shadow-accent/20 cursor-pointer"
-              >
-                <svg className="w-8 h-8 translate-x-0.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </a>
-            ) : (
-              <button className="w-20 h-20 bg-accent/90 text-surface rounded-full flex items-center justify-center hover:bg-accent hover:scale-110 transition-all shadow-xl shadow-accent/20 cursor-pointer">
-                <svg className="w-8 h-8 translate-x-0.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Curriculum */}

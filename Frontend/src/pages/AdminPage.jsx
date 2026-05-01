@@ -8,7 +8,6 @@ export default function AdminPage() {
   const [form, setForm] = useState({
     title: "",
     cover_image_url: "",
-    preview_video_url: "",
     qr_image_url: "", // New QR field for specific course
     description: "",
     curriculum: "",
@@ -162,7 +161,6 @@ export default function AdminPage() {
     const { data, error } = await supabase.from('courses').insert([{
       title: form.title,
       cover_image_url: form.cover_image_url,
-      preview_video_url: form.preview_video_url,
       qr_image_url: form.qr_image_url,
       description: form.description,
       curriculum: form.curriculum,
@@ -179,7 +177,7 @@ export default function AdminPage() {
 
     setExistingCourses([...data, ...existingCourses]);
     setSubmitStatus("success");
-    setForm({ title: "", cover_image_url: "", preview_video_url: "", qr_image_url: "", description: "", curriculum: "", price: "", original_price: "" });
+    setForm({ title: "", cover_image_url: "", qr_image_url: "", description: "", curriculum: "", price: "", original_price: "" });
     setLockedUrls([{ title: "", url: "" }]);
     setTimeout(() => setSubmitStatus(null), 3000);
   };
@@ -189,7 +187,6 @@ export default function AdminPage() {
     setForm({
       title: course.title,
       cover_image_url: course.cover_image_url,
-      preview_video_url: course.preview_video_url,
       qr_image_url: course.qr_image_url || "",
       description: course.description,
       curriculum: course.curriculum,
@@ -206,7 +203,6 @@ export default function AdminPage() {
     const { error } = await supabase.from('courses').update({
       title: form.title,
       cover_image_url: form.cover_image_url,
-      preview_video_url: form.preview_video_url,
       qr_image_url: form.qr_image_url,
       description: form.description,
       curriculum: form.curriculum,
@@ -223,7 +219,7 @@ export default function AdminPage() {
 
     setSubmitStatus("success");
     setEditingCourseId(null);
-    setForm({ title: "", cover_image_url: "", preview_video_url: "", qr_image_url: "", description: "", curriculum: "", price: "", original_price: "" });
+    setForm({ title: "", cover_image_url: "", qr_image_url: "", description: "", curriculum: "", price: "", original_price: "" });
     setLockedUrls([{ title: "", url: "" }]);
     fetchData(); // Refresh list
     setTimeout(() => setSubmitStatus(null), 3000);
@@ -231,7 +227,7 @@ export default function AdminPage() {
 
   const handleCancelEdit = () => {
     setEditingCourseId(null);
-    setForm({ title: "", cover_image_url: "", preview_video_url: "", qr_image_url: "", description: "", curriculum: "", price: "", original_price: "" });
+    setForm({ title: "", cover_image_url: "", qr_image_url: "", description: "", curriculum: "", price: "", original_price: "" });
     setLockedUrls([{ title: "", url: "" }]);
   };
 
@@ -359,10 +355,6 @@ export default function AdminPage() {
                 <div>
                   <label className={labelClasses}>Cover Image URL</label>
                   <input name="cover_image_url" type="url" value={form.cover_image_url} onChange={handleCourseChange} required className={inputClasses} />
-                </div>
-                <div>
-                  <label className={labelClasses}>Preview Video URL (YouTube)</label>
-                  <input name="preview_video_url" type="url" value={form.preview_video_url} onChange={handleCourseChange} className={inputClasses} />
                 </div>
                 <div>
                   <label className={labelClasses}>Description</label>
