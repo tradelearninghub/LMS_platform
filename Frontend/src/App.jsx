@@ -12,6 +12,9 @@ import CourseDetailPage from "./pages/CourseDetailPage";
 import DashboardPage from "./pages/DashboardPage";
 import UnlockedCoursePage from "./pages/UnlockedCoursePage";
 import AdminPage from "./pages/AdminPage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import RefundPage from "./pages/RefundPage";
 
 export default function App() {
   return (
@@ -27,6 +30,9 @@ export default function App() {
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/courses/:id" element={<CourseDetailPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/refund-policy" element={<RefundPage />} />
 
           {/* Protected: Authenticated Users */}
           <Route
