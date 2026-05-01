@@ -10,7 +10,6 @@ export default function AdminPage() {
     cover_image_url: "",
     preview_video_url: "",
     qr_image_url: "", // New QR field for specific course
-    video_title: "",
     description: "",
     curriculum: "",
     price: "",
@@ -20,6 +19,7 @@ export default function AdminPage() {
   const [submitStatus, setSubmitStatus] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [existingCourses, setExistingCourses] = useState([]);
+  const [editingCourseId, setEditingCourseId] = useState(null);
   
   // Payments Tab State
   const [pendingPayments, setPendingPayments] = useState([]);
@@ -164,7 +164,6 @@ export default function AdminPage() {
       cover_image_url: form.cover_image_url,
       preview_video_url: form.preview_video_url,
       qr_image_url: form.qr_image_url,
-      video_title: form.video_title,
       description: form.description,
       curriculum: form.curriculum,
       price: parseInt(form.price, 10),
@@ -180,9 +179,60 @@ export default function AdminPage() {
 
     setExistingCourses([...data, ...existingCourses]);
     setSubmitStatus("success");
-    setForm({ title: "", cover_image_url: "", preview_video_url: "", qr_image_url: "", video_title: "", description: "", curriculum: "", price: "", original_price: "" });
+    setForm({ title: "", cover_image_url: "", preview_video_url: "", qr_image_url: "", description: "", curriculum: "", price: "", original_price: "" });
     setLockedUrls([{ title: "", url: "" }]);
     setTimeout(() => setSubmitStatus(null), 3000);
+  };
+
+  const handleEditCourse = (course) => {
+    setEditingCourseId(course.id);
+    setForm({
+      title: course.title,
+      cover_image_url: course.cover_image_url,
+      preview_video_url: course.preview_video_url,
+      qr_image_url: course.qr_image_url || "",
+      description: course.description,
+      curriculum: course.curriculum,
+      price: course.price.toString(),
+      original_price: course.original_price ? course.original_price.toString() : "",
+    });
+    setLockedUrls(course.locked_urls.length > 0 ? course.locked_urls : [{ title: "", url: "" }]);
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleUpdateCourse = async (e) => {
+    e.preventDefault();
+    const { error } = await supabase.from('courses').update({
+      title: form.title,
+      cover_image_url: form.cover_image_url,
+      preview_video_url: form.preview_video_url,
+      qr_image_url: form.qr_image_url,
+      description: form.description,
+      curriculum: form.curriculum,
+      price: parseInt(form.price, 10),
+      original_price: form.original_price ? parseInt(form.original_price, 10) : null,
+      locked_urls: lockedUrls.filter((u) => u.title && u.url)
+    }).eq('id', editingCourseId);
+
+    if (error) {
+      setSubmitStatus("error");
+      setErrorMessage(error.message);
+      return;
+    }
+
+    setSubmitStatus("success");
+    setEditingCourseId(null);
+    setForm({ title: "", cover_image_url: "", preview_video_url: "", qr_image_url: "", description: "", curriculum: "", price: "", original_price: "" });
+    setLockedUrls([{ title: "", url: "" }]);
+    fetchData(); // Refresh list
+    setTimeout(() => setSubmitStatus(null), 3000);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCourseId(null);
+    setForm({ title: "", cover_image_url: "", preview_video_url: "", qr_image_url: "", description: "", curriculum: "", price: "", original_price: "" });
+    setLockedUrls([{ title: "", url: "" }]);
   };
 
   const handleDeleteCourse = async (id) => {
@@ -297,11 +347,11 @@ export default function AdminPage() {
         {activeTab === "courses" && (
           <div className="animate-fade-in-up flex flex-col md:flex-row gap-12">
             <div className="flex-1">
-              <h2 className="text-xl font-semibold mb-6">Create New Course</h2>
-              {submitStatus === "success" && <div className="mb-6 p-4 bg-success/10 text-success rounded-xl text-sm">Course created!</div>}
+              <h2 className="text-xl font-semibold mb-6">{editingCourseId ? "Edit Course" : "Create New Course"}</h2>
+              {submitStatus === "success" && <div className="mb-6 p-4 bg-success/10 text-success rounded-xl text-sm">{editingCourseId ? "Course updated!" : "Course created!"}</div>}
               {submitStatus === "error" && <div className="mb-6 p-4 bg-error/10 text-error rounded-xl text-sm">{errorMessage}</div>}
               
-              <form onSubmit={handleCreateCourse} className="space-y-6">
+              <form onSubmit={editingCourseId ? handleUpdateCourse : handleCreateCourse} className="space-y-6">
                 <div>
                   <label className={labelClasses}>Title</label>
                   <input name="title" value={form.title} onChange={handleCourseChange} required className={inputClasses} />
@@ -313,14 +363,6 @@ export default function AdminPage() {
                 <div>
                   <label className={labelClasses}>Preview Video URL (YouTube)</label>
                   <input name="preview_video_url" type="url" value={form.preview_video_url} onChange={handleCourseChange} className={inputClasses} />
-                </div>
-                <div>
-                  <label className={labelClasses}>Custom QR Image URL (Optional)</label>
-                  <input name="qr_image_url" type="url" placeholder="Leave empty to use Universal QR" value={form.qr_image_url} onChange={handleCourseChange} className={inputClasses} />
-                </div>
-                <div>
-                  <label className={labelClasses}>Video Title</label>
-                  <input name="video_title" value={form.video_title} onChange={handleCourseChange} required className={inputClasses} />
                 </div>
                 <div>
                   <label className={labelClasses}>Description</label>
@@ -356,7 +398,16 @@ export default function AdminPage() {
                     ))}
                   </div>
                 </div>
-                <button type="submit" className="w-full py-3 bg-accent text-surface font-semibold rounded-xl hover:bg-accent-hover transition-colors">Publish</button>
+                <div className="flex gap-4">
+                  <button type="submit" className="flex-1 py-3 bg-accent text-surface font-semibold rounded-xl hover:bg-accent-hover transition-colors">
+                    {editingCourseId ? "Update Course" : "Publish"}
+                  </button>
+                  {editingCourseId && (
+                    <button type="button" onClick={handleCancelEdit} className="px-6 py-3 border border-border text-text-secondary rounded-xl hover:bg-surface-raised transition-colors">
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
 
@@ -375,7 +426,10 @@ export default function AdminPage() {
                            )}
                          </div>
                        </div>
-                       <button onClick={() => handleDeleteCourse(c.id)} className="text-xs text-error hover:underline">Delete</button>
+                        <div className="flex gap-4 items-center">
+                          <button onClick={() => handleEditCourse(c)} className="text-xs text-accent hover:underline">Edit</button>
+                          <button onClick={() => handleDeleteCourse(c.id)} className="text-xs text-error hover:underline">Delete</button>
+                        </div>
                      </div>
                    ))}
                  </div>
