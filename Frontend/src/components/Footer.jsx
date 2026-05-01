@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Footer() {
+  const { user } = useAuth();
   return (
     <footer className="bg-surface border-t border-border pt-16 pb-8 mt-auto">
       <div className="max-w-6xl mx-auto px-6">
@@ -17,8 +19,11 @@ export default function Footer() {
             <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider mb-4">Platform</h3>
             <ul className="space-y-3">
               <li><Link to="/courses" className="text-text-secondary hover:text-accent transition-colors">Courses</Link></li>
-              <li><Link to="/dashboard" className="text-text-secondary hover:text-accent transition-colors">Dashboard</Link></li>
-              <li><Link to="/auth" className="text-text-secondary hover:text-accent transition-colors">Sign In</Link></li>
+              {user ? (
+                <li><Link to="/dashboard" className="text-text-secondary hover:text-accent transition-colors">Dashboard</Link></li>
+              ) : (
+                <li><Link to="/auth" className="text-text-secondary hover:text-accent transition-colors">Sign In</Link></li>
+              )}
             </ul>
           </div>
           <div>

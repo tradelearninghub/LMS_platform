@@ -122,6 +122,7 @@ export default function AdminPage() {
                 date: p.created_at,
                 amount: p.amount,
                 transaction_id: p.transaction_id,
+                phone_number: p.phone_number,
                 has_access: hasAccess,
                 purchase_id: purchaseRecord ? purchaseRecord.id : null
               };
@@ -445,6 +446,7 @@ export default function AdminPage() {
                       <h3 className="font-medium text-lg mb-2">{p.sender_name}</h3>
                       <div className="text-sm text-text-muted space-y-1">
                         <p>User Email: <span className="text-text-primary">{p.user_email}</span></p>
+                        <p>Phone: <span className="text-text-primary font-medium">{p.phone_number || "N/A"}</span></p>
                         <p>Tx ID: <span className="text-text-primary font-mono">{p.transaction_id}</span></p>
                         <p>Amount Paid: <span className="text-success font-medium">₹{p.amount}</span></p>
                         <p>Date: {new Date(p.created_at).toLocaleString()}</p>
@@ -486,6 +488,7 @@ export default function AdminPage() {
                           <thead>
                             <tr className="border-b border-border/50">
                               <th className="pb-2 font-medium text-text-muted">Course</th>
+                              <th className="pb-2 font-medium text-text-muted">Phone</th>
                               <th className="pb-2 font-medium text-text-muted">Tx ID</th>
                               <th className="pb-2 font-medium text-text-muted">Amount</th>
                               <th className="pb-2 font-medium text-text-muted">Date</th>
@@ -497,6 +500,7 @@ export default function AdminPage() {
                             {user.enrollments.map(enr => (
                               <tr key={enr.course_id} className="border-b border-border/30 last:border-0">
                                 <td className="py-3 text-text-secondary font-medium">{enr.course_title}</td>
+                                <td className="py-3 text-text-muted text-xs">{enr.phone_number || "N/A"}</td>
                                 <td className="py-3 text-text-muted font-mono text-xs">{enr.transaction_id}</td>
                                 <td className="py-3 text-success font-medium">₹{enr.amount}</td>
                                 <td className="py-3 text-text-muted">{new Date(enr.date).toLocaleDateString()}</td>

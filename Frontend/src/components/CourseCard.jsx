@@ -13,6 +13,10 @@ export default function CourseCard({ course, isPurchased = false }) {
     maximumFractionDigits: 0,
   }).format(course.original_price) : null;
 
+  const discountPercent = course.original_price 
+    ? Math.round(((course.original_price - course.price) / course.original_price) * 100) 
+    : null;
+
   return (
     <Link
       to={isPurchased ? `/dashboard/course/${course.id}` : `/courses/${course.id}`}
@@ -37,8 +41,13 @@ export default function CourseCard({ course, isPurchased = false }) {
               Purchased
             </span>
           ) : (
-            <div className="absolute top-4 right-4 flex flex-col items-end gap-1">
-              <span className="px-3 py-1 text-xs font-semibold tracking-wide bg-accent text-surface border border-accent rounded-full backdrop-blur-sm shadow-lg shadow-accent/20">
+            <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5">
+              {discountPercent > 0 && (
+                <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-success text-white rounded-md shadow-sm">
+                  {discountPercent}% OFF
+                </span>
+              )}
+              <span className="px-3 py-1 text-sm font-bold tracking-wide bg-accent text-surface border border-accent rounded-full backdrop-blur-sm shadow-lg shadow-accent/20">
                 {formattedPrice}
               </span>
               {formattedOriginalPrice && (

@@ -15,6 +15,7 @@ export default function CourseDetailPage() {
   // Payment Modal State
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [senderName, setSenderName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [transactionId, setTransactionId] = useState("");
   const [paymentSubmitStatus, setPaymentSubmitStatus] = useState(null); // 'success' | 'error' | 'loading' | null
   const [universalQr, setUniversalQr] = useState("");
@@ -116,6 +117,7 @@ export default function CourseDetailPage() {
       user_email: user.email, // Store email for easier admin view
       course_id: course.id,
       sender_name: senderName,
+      phone_number: phoneNumber,
       transaction_id: transactionId,
       amount: course.price.toString()
     }]);
@@ -128,6 +130,7 @@ export default function CourseDetailPage() {
 
     setPaymentSubmitStatus("success");
     setSenderName("");
+    setPhoneNumber("");
     setTransactionId("");
   };
 
@@ -289,6 +292,17 @@ export default function CourseDetailPage() {
                       value={senderName}
                       onChange={(e) => setSenderName(e.target.value)}
                       placeholder="Name on bank account"
+                      className="w-full px-4 py-3 bg-surface-raised border border-border rounded-xl text-sm text-text-primary focus:border-accent/50 focus:outline-none transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-muted uppercase tracking-widest mb-1.5">Phone Number (WhatsApp)</label>
+                    <input 
+                      type="tel" 
+                      required 
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="e.g. +91 9876543210"
                       className="w-full px-4 py-3 bg-surface-raised border border-border rounded-xl text-sm text-text-primary focus:border-accent/50 focus:outline-none transition-colors"
                     />
                   </div>

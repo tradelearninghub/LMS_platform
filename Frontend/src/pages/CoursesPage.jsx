@@ -23,7 +23,7 @@ export default function CoursesPage() {
   }, []);
 
   return (
-    <div className="min-h-screen pt-24 pb-24 px-6 relative overflow-hidden">
+    <div className="min-h-screen pt-32 pb-24 px-6 relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-accent/[0.03] rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3 pointer-events-none" />
       

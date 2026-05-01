@@ -23,7 +23,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 pt-16 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 pt-32 md:pt-16 relative overflow-hidden">
       {/* Subtle radial glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent/[0.03] rounded-full blur-3xl pointer-events-none" />
 
@@ -116,9 +116,21 @@ export default function LandingPage() {
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-surface-card to-transparent" />
-                  <span className="absolute top-4 right-4 px-3 py-1 text-xs font-medium bg-surface/80 backdrop-blur text-text-primary border border-border rounded-full">
-                    ₹{course.price}
-                  </span>
+                  <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5">
+                    {course.original_price && course.original_price > course.price && (
+                      <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-success text-white rounded-md shadow-sm">
+                        {Math.round(((course.original_price - course.price) / course.original_price) * 100)}% OFF
+                      </span>
+                    )}
+                    <span className="px-3 py-1 text-xs font-bold bg-accent text-surface border border-accent rounded-full shadow-lg shadow-accent/20">
+                      ₹{course.price}
+                    </span>
+                    {course.original_price && (
+                      <span className="px-2 py-0.5 text-[10px] font-medium text-text-muted bg-surface/70 border border-border rounded-full backdrop-blur-sm line-through">
+                        ₹{course.original_price}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="p-8 flex flex-col flex-1">
