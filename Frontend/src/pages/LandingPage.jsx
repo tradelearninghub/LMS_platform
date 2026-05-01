@@ -19,6 +19,8 @@ export default function LandingPage() {
       if (data) {
         setLatestCourses(data);
       }
+    }
+
     async function fetchPurchases() {
       if (!user) return;
       const { data } = await supabase.from('purchases').select('course_id').eq('user_id', user.id);
