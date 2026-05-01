@@ -41,7 +41,7 @@ export default function CoursesPage() {
           </div>
           <div className="flex-1 w-full hidden md:block">
             <img 
-              src="https://images.unsplash.com/photo-1590283603385-18ffb2a40c27?auto=format&fit=crop&w=800&q=80" 
+              src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
               alt="Trading Analysis" 
               className="w-full h-64 object-cover rounded-3xl border border-border shadow-2xl shadow-accent/5"
             />
