@@ -10,16 +10,37 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Upsert user profile on sign-in for tracking all users
+  const upsertUserProfile = async (currentUser) => {
+    if (!currentUser) return;
+    try {
+      await supabase.from('user_profiles').upsert({
+        id: currentUser.id,
+        email: currentUser.email,
+        last_sign_in: new Date().toISOString()
+      }, { onConflict: 'id' });
+    } catch (err) {
+      // Silently fail — not critical
+      console.log('Profile upsert skipped:', err.message);
+    }
+  };
+
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        upsertUserProfile(session.user);
+      }
       setLoading(false);
     });
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user && _event === 'SIGNED_IN') {
+        upsertUserProfile(session.user);
+      }
       setLoading(false);
     });
 
@@ -58,3 +79,4 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
+

@@ -11,7 +11,7 @@ export default function CoursesPage() {
       const { data, error } = await supabase
         .from('courses')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('display_order', { ascending: true });
       
       if (!error && data) {
         setCourses(data);

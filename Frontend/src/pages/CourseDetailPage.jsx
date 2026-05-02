@@ -19,6 +19,8 @@ export default function CourseDetailPage() {
   const [transactionId, setTransactionId] = useState("");
   const [paymentSubmitStatus, setPaymentSubmitStatus] = useState(null); // 'success' | 'error' | 'loading' | null
   const [universalQr, setUniversalQr] = useState("");
+  const [screenshotFile, setScreenshotFile] = useState(null);
+  const [screenshotPreview, setScreenshotPreview] = useState(null);
 
   useEffect(() => {
     async function fetchCourseAndStatus() {
@@ -108,18 +110,48 @@ export default function CourseDetailPage() {
     setShowPaymentModal(true);
   };
 
+  const handleScreenshotChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setScreenshotFile(file);
+      setScreenshotPreview(URL.createObjectURL(file));
+    }
+  };
+
   const submitPaymentVerification = async (e) => {
     e.preventDefault();
     setPaymentSubmitStatus("loading");
 
+    let screenshotUrl = null;
+
+    // Upload screenshot if provided
+    if (screenshotFile) {
+      const fileExt = screenshotFile.name.split('.').pop();
+      const fileName = `${user.id}_${course.id}_${Date.now()}.${fileExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('payment-screenshots')
+        .upload(fileName, screenshotFile);
+
+      if (uploadError) {
+        console.error('Screenshot upload failed:', uploadError);
+        // Continue without screenshot rather than blocking
+      } else {
+        const { data: urlData } = supabase.storage
+          .from('payment-screenshots')
+          .getPublicUrl(uploadData.path);
+        screenshotUrl = urlData.publicUrl;
+      }
+    }
+
     const { error } = await supabase.from('payment_verifications').insert([{
       user_id: user.id,
-      user_email: user.email, // Store email for easier admin view
+      user_email: user.email,
       course_id: course.id,
       sender_name: senderName,
       phone_number: phoneNumber,
       transaction_id: transactionId,
-      amount: course.price.toString()
+      amount: course.price.toString(),
+      screenshot_url: screenshotUrl
     }]);
 
     if (error) {
@@ -132,6 +164,8 @@ export default function CourseDetailPage() {
     setSenderName("");
     setPhoneNumber("");
     setTransactionId("");
+    setScreenshotFile(null);
+    setScreenshotPreview(null);
   };
 
   return (
@@ -316,6 +350,35 @@ export default function CourseDetailPage() {
                       placeholder="e.g. 123456789012"
                       className="w-full px-4 py-3 bg-surface-raised border border-border rounded-xl text-sm text-text-primary focus:border-accent/50 focus:outline-none transition-colors font-mono"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-muted uppercase tracking-widest mb-1.5">Payment Screenshot (Optional)</label>
+                    <div className="relative">
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleScreenshotChange}
+                        className="hidden"
+                        id="screenshot-upload"
+                      />
+                      <label 
+                        htmlFor="screenshot-upload"
+                        className="flex items-center gap-3 w-full px-4 py-3 bg-surface-raised border border-dashed border-border rounded-xl text-sm text-text-muted cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-all duration-300"
+                      >
+                        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        {screenshotFile ? screenshotFile.name : 'Upload screenshot of payment'}
+                      </label>
+                    </div>
+                    {screenshotPreview && (
+                      <div className="mt-3 relative inline-block">
+                        <img src={screenshotPreview} alt="Screenshot preview" className="w-32 h-32 object-cover rounded-xl border border-border" />
+                        <button 
+                          type="button" 
+                          onClick={() => { setScreenshotFile(null); setScreenshotPreview(null); }}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-error text-white rounded-full text-xs flex items-center justify-center hover:bg-error/80"
+                        >✕</button>
+                      </div>
+                    )}
                   </div>
                   
                   <button 

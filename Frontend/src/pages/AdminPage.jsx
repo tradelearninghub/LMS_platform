@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState("courses"); // 'courses', 'payments', 'users', 'settings'
+  const [activeTab, setActiveTab] = useState("courses");
 
   // Courses Tab State
   const [form, setForm] = useState({
     title: "",
     cover_image_url: "",
-    qr_image_url: "", // New QR field for specific course
+    qr_image_url: "",
     description: "",
     curriculum: "",
     price: "",
@@ -20,8 +20,13 @@ export default function AdminPage() {
   const [existingCourses, setExistingCourses] = useState([]);
   const [editingCourseId, setEditingCourseId] = useState(null);
   
+  // Drag-and-drop state for course ordering
+  const [draggedCourseIdx, setDraggedCourseIdx] = useState(null);
+  const [orderChanged, setOrderChanged] = useState(false);
+
   // Payments Tab State
   const [pendingPayments, setPendingPayments] = useState([]);
+  const [screenshotLightbox, setScreenshotLightbox] = useState(null);
 
   // Settings Tab State
   const [universalQr, setUniversalQr] = useState("");
@@ -29,6 +34,7 @@ export default function AdminPage() {
 
   // Users Tab State
   const [allUsersData, setAllUsersData] = useState([]);
+  const [expandedUserId, setExpandedUserId] = useState(null);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -66,7 +72,7 @@ export default function AdminPage() {
   async function fetchData() {
     setIsLoading(true);
     if (activeTab === "courses") {
-      const { data } = await supabase.from('courses').select('*').order('created_at', { ascending: false });
+      const { data } = await supabase.from('courses').select('*').order('display_order', { ascending: true });
       if (data) setExistingCourses(data);
     } else if (activeTab === "payments") {
       // Fetch pending payments and join user email and course title
@@ -99,40 +105,54 @@ export default function AdminPage() {
       const { data } = await supabase.from('platform_settings').select('*').eq('id', 1).single();
       if (data) setUniversalQr(data.universal_qr_url || "");
     } else if (activeTab === "users") {
+      // Fetch ALL users from user_profiles (includes non-purchasers)
+      const { data: profilesData } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false });
       const { data: purchasesData } = await supabase.from('purchases').select('*');
       const { data: paymentsData } = await supabase.from('payment_verifications').select('*');
       const { data: coursesData } = await supabase.from('courses').select('id, title');
       
-      if (purchasesData && paymentsData && coursesData) {
+      if (profilesData && coursesData) {
         const usersMap = {};
         
-        paymentsData.forEach(p => {
-          if (p.status === 'approved') {
-            if (!usersMap[p.user_id]) {
-              usersMap[p.user_id] = { id: p.user_id, email: p.user_email, enrollments: {} };
-            }
-            const course = coursesData.find(c => c.id === p.course_id);
-            if (course) {
-              const hasAccess = purchasesData.some(pur => pur.user_id === p.user_id && pur.course_id === p.course_id);
-              const purchaseRecord = purchasesData.find(pur => pur.user_id === p.user_id && pur.course_id === p.course_id);
-              
-              usersMap[p.user_id].enrollments[p.course_id] = {
-                course_id: p.course_id,
-                course_title: course.title,
-                date: p.created_at,
-                amount: p.amount,
-                transaction_id: p.transaction_id,
-                phone_number: p.phone_number,
-                has_access: hasAccess,
-                purchase_id: purchaseRecord ? purchaseRecord.id : null
-              };
-            }
-          }
+        // First, add ALL users from profiles
+        profilesData.forEach(profile => {
+          usersMap[profile.id] = {
+            id: profile.id,
+            email: profile.email,
+            created_at: profile.created_at,
+            last_sign_in: profile.last_sign_in,
+            enrollments: {}
+          };
         });
+        
+        // Then enrich with payment/purchase data
+        if (paymentsData) {
+          paymentsData.forEach(p => {
+            if (p.status === 'approved') {
+              if (!usersMap[p.user_id]) {
+                usersMap[p.user_id] = { id: p.user_id, email: p.user_email, enrollments: {} };
+              }
+              const course = coursesData.find(c => c.id === p.course_id);
+              if (course) {
+                const hasAccess = purchasesData?.some(pur => pur.user_id === p.user_id && pur.course_id === p.course_id);
+                usersMap[p.user_id].enrollments[p.course_id] = {
+                  course_id: p.course_id,
+                  course_title: course.title,
+                  date: p.created_at,
+                  amount: p.amount,
+                  transaction_id: p.transaction_id,
+                  phone_number: p.phone_number,
+                  has_access: hasAccess,
+                  purchase_id: purchasesData?.find(pur => pur.user_id === p.user_id && pur.course_id === p.course_id)?.id || null
+                };
+              }
+            }
+          });
+        }
         
         const formattedUsers = Object.values(usersMap).map(u => ({
           ...u,
-          enrollments: Object.values(u.enrollments)
+          enrollments: Object.values(u.enrollments || {})
         }));
         setAllUsersData(formattedUsers);
       }
@@ -296,7 +316,30 @@ export default function AdminPage() {
       if (!window.confirm("Grant access to this course?")) return;
       await supabase.from('purchases').insert([{ user_id: userId, course_id: courseId }]);
     }
-    fetchData(); // Refresh the data
+    fetchData();
+  };
+
+  // --- Drag and Drop Course Ordering ---
+  const handleDragStart = (idx) => setDraggedCourseIdx(idx);
+  const handleDragOver = (e, idx) => {
+    e.preventDefault();
+    if (draggedCourseIdx === null || draggedCourseIdx === idx) return;
+    const reordered = [...existingCourses];
+    const [moved] = reordered.splice(draggedCourseIdx, 1);
+    reordered.splice(idx, 0, moved);
+    setExistingCourses(reordered);
+    setDraggedCourseIdx(idx);
+    setOrderChanged(true);
+  };
+  const handleDragEnd = () => setDraggedCourseIdx(null);
+
+  const handleSaveOrder = async () => {
+    const updates = existingCourses.map((c, i) => 
+      supabase.from('courses').update({ display_order: i }).eq('id', c.id)
+    );
+    await Promise.all(updates);
+    setOrderChanged(false);
+    alert("Course order saved!");
   };
 
   const inputClasses = "w-full px-4 py-3 bg-surface-raised border border-border rounded-xl text-sm text-text-primary placeholder:text-text-muted/40 focus:border-accent/50 focus:outline-none transition-colors duration-300";
@@ -405,21 +448,42 @@ export default function AdminPage() {
             </div>
 
             <div className="flex-1">
-               <h2 className="text-xl font-semibold mb-6">Published Courses</h2>
+               <div className="flex items-center justify-between mb-6">
+                 <h2 className="text-xl font-semibold">Published Courses</h2>
+                 {orderChanged && (
+                   <button onClick={handleSaveOrder} className="px-4 py-2 bg-success text-white text-xs font-semibold rounded-lg hover:bg-success/90 transition-colors animate-fade-in">
+                     Save Order
+                   </button>
+                 )}
+               </div>
+               <p className="text-xs text-text-muted mb-4">Drag courses to reorder how they appear on the site.</p>
                {isLoading ? <p className="text-text-muted">Loading...</p> : (
-                 <div className="space-y-4">
-                   {existingCourses.map(c => (
-                     <div key={c.id} className="p-4 border border-border rounded-xl flex justify-between items-center">
-                       <div>
-                         <h3 className="font-medium text-sm">{c.title}</h3>
-                         <div className="flex gap-2 items-center">
-                           <p className="text-xs font-semibold text-text-primary">₹{c.price}</p>
-                           {c.original_price && (
-                             <p className="text-[10px] text-text-muted line-through">₹{c.original_price}</p>
-                           )}
+                 <div className="space-y-2">
+                   {existingCourses.map((c, idx) => (
+                     <div 
+                       key={c.id} 
+                       draggable 
+                       onDragStart={() => handleDragStart(idx)}
+                       onDragOver={(e) => handleDragOver(e, idx)}
+                       onDragEnd={handleDragEnd}
+                       className={`p-4 border rounded-xl flex justify-between items-center cursor-grab active:cursor-grabbing transition-all duration-200 ${draggedCourseIdx === idx ? 'border-accent bg-accent/5 scale-[1.02] shadow-lg' : 'border-border hover:border-border-hover'}`}
+                     >
+                       <div className="flex items-center gap-3">
+                         <div className="text-text-muted/40 flex-shrink-0">
+                           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+                         </div>
+                         <div>
+                           <h3 className="font-medium text-sm">{c.title}</h3>
+                           <div className="flex gap-2 items-center">
+                             <p className="text-xs font-semibold text-text-primary">₹{c.price}</p>
+                             {c.original_price && (
+                               <p className="text-[10px] text-text-muted line-through">₹{c.original_price}</p>
+                             )}
+                           </div>
                          </div>
                        </div>
                         <div className="flex gap-4 items-center">
+                          <span className="text-[10px] text-text-muted font-mono">#{idx + 1}</span>
                           <button onClick={() => handleEditCourse(c)} className="text-xs text-accent hover:underline">Edit</button>
                           <button onClick={() => handleDeleteCourse(c.id)} className="text-xs text-error hover:underline">Delete</button>
                         </div>
@@ -440,8 +504,8 @@ export default function AdminPage() {
             ) : (
               <div className="grid gap-4">
                 {pendingPayments.map(p => (
-                  <div key={p.id} className="p-6 border border-border rounded-xl bg-surface-card flex flex-col md:flex-row justify-between md:items-center gap-6">
-                    <div>
+                  <div key={p.id} className="p-6 border border-border rounded-xl bg-surface-card flex flex-col md:flex-row justify-between md:items-start gap-6">
+                    <div className="flex-1">
                       <p className="text-xs text-accent mb-1">{p.course?.title || "Unknown Course"}</p>
                       <h3 className="font-medium text-lg mb-2">{p.sender_name}</h3>
                       <div className="text-sm text-text-muted space-y-1">
@@ -451,8 +515,17 @@ export default function AdminPage() {
                         <p>Amount Paid: <span className="text-success font-medium">₹{p.amount}</span></p>
                         <p>Date: {new Date(p.created_at).toLocaleString()}</p>
                       </div>
+                      {p.screenshot_url && (
+                        <button 
+                          onClick={() => setScreenshotLightbox(p.screenshot_url)}
+                          className="mt-3 flex items-center gap-2 text-xs text-accent hover:text-accent-hover transition-colors"
+                        >
+                          <img src={p.screenshot_url} alt="Screenshot" className="w-16 h-16 object-cover rounded-lg border border-border" />
+                          <span>View Screenshot</span>
+                        </button>
+                      )}
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-shrink-0">
                       <button onClick={() => handleApprovePayment(p)} className="px-4 py-2 bg-success text-white rounded-lg text-sm font-medium hover:bg-success/90">
                         Approve & Grant Access
                       </button>
@@ -464,72 +537,110 @@ export default function AdminPage() {
                 ))}
               </div>
             )}
+
+            {/* Screenshot Lightbox */}
+            {screenshotLightbox && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setScreenshotLightbox(null)}>
+                <div className="relative max-w-3xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setScreenshotLightbox(null)} className="absolute -top-3 -right-3 w-8 h-8 bg-surface text-text-primary rounded-full flex items-center justify-center shadow-lg hover:bg-surface-raised z-10">✕</button>
+                  <img src={screenshotLightbox} alt="Payment Screenshot" className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl" />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* USERS TAB */}
         {activeTab === "users" && (
           <div className="animate-fade-in-up">
-            <h2 className="text-xl font-semibold mb-6">User Management</h2>
+            <h2 className="text-xl font-semibold mb-2">All Users</h2>
+            <p className="text-xs text-text-muted mb-6">{allUsersData.length} total users — click to expand details</p>
             {isLoading ? <p className="text-text-muted">Loading...</p> : allUsersData.length === 0 ? (
               <p className="text-text-muted">No users found.</p>
             ) : (
-              <div className="grid gap-6">
+              <div className="space-y-3">
                 {allUsersData.map(user => (
-                  <div key={user.id} className="p-6 border border-border rounded-xl bg-surface-card flex flex-col gap-4">
-                    <div>
-                      <h3 className="font-medium text-lg text-text-primary">{user.email}</h3>
-                      <p className="text-xs text-text-muted">ID: {user.id}</p>
-                    </div>
-                    
-                    {user.enrollments.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                          <thead>
-                            <tr className="border-b border-border/50">
-                              <th className="pb-2 font-medium text-text-muted">Course</th>
-                              <th className="pb-2 font-medium text-text-muted">Phone</th>
-                              <th className="pb-2 font-medium text-text-muted">Tx ID</th>
-                              <th className="pb-2 font-medium text-text-muted">Amount</th>
-                              <th className="pb-2 font-medium text-text-muted">Date</th>
-                              <th className="pb-2 font-medium text-text-muted">Access Status</th>
-                              <th className="pb-2 font-medium text-text-muted text-right">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {user.enrollments.map(enr => (
-                              <tr key={enr.course_id} className="border-b border-border/30 last:border-0">
-                                <td className="py-3 text-text-secondary font-medium">{enr.course_title}</td>
-                                <td className="py-3 text-text-muted text-xs">{enr.phone_number || "N/A"}</td>
-                                <td className="py-3 text-text-muted font-mono text-xs">{enr.transaction_id}</td>
-                                <td className="py-3 text-success font-medium">₹{enr.amount}</td>
-                                <td className="py-3 text-text-muted">{new Date(enr.date).toLocaleDateString()}</td>
-                                <td className="py-3">
-                                  {enr.has_access ? (
-                                    <span className="inline-block px-2 py-1 bg-success/10 text-success rounded text-[10px] font-bold uppercase tracking-wider">Active</span>
-                                  ) : (
-                                    <span className="inline-block px-2 py-1 bg-error/10 text-error rounded text-[10px] font-bold uppercase tracking-wider">Revoked</span>
-                                  )}
-                                </td>
-                                <td className="py-3 text-right">
-                                  <button 
-                                    onClick={() => handleToggleAccess(user.id, enr.course_id, enr.has_access)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                                      enr.has_access 
-                                      ? "bg-error/10 text-error hover:bg-error/20" 
-                                      : "bg-success/10 text-success hover:bg-success/20"
-                                    }`}
-                                  >
-                                    {enr.has_access ? "Revoke Access" : "Grant Access"}
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                  <div key={user.id} className="border border-border rounded-xl bg-surface-card overflow-hidden">
+                    {/* Compact user row */}
+                    <button 
+                      onClick={() => setExpandedUserId(expandedUserId === user.id ? null : user.id)}
+                      className="w-full p-4 flex items-center justify-between gap-4 hover:bg-surface-raised/50 transition-colors text-left cursor-pointer"
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-9 h-9 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm font-bold flex-shrink-0">
+                          {user.email?.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-text-primary truncate">{user.email}</p>
+                          <p className="text-[10px] text-text-muted">
+                            Joined {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                          </p>
+                        </div>
                       </div>
-                    ) : (
-                      <p className="text-sm text-text-muted">No enrollments found for this user.</p>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        {user.enrollments.length > 0 ? (
+                          <span className="px-2.5 py-1 bg-accent/10 text-accent rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            {user.enrollments.length} course{user.enrollments.length > 1 ? 's' : ''}
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 bg-surface-raised text-text-muted rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            No purchases
+                          </span>
+                        )}
+                        <svg className={`w-4 h-4 text-text-muted transition-transform duration-200 ${expandedUserId === user.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    </button>
+                    
+                    {/* Expanded detail */}
+                    {expandedUserId === user.id && (
+                      <div className="border-t border-border p-4 bg-surface-raised/30 animate-fade-in">
+                        <p className="text-[10px] text-text-muted mb-1">User ID: {user.id}</p>
+                        {user.last_sign_in && <p className="text-[10px] text-text-muted mb-3">Last sign in: {new Date(user.last_sign_in).toLocaleString()}</p>}
+                        
+                        {user.enrollments.length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                              <thead>
+                                <tr className="border-b border-border/50">
+                                  <th className="pb-2 font-medium text-text-muted text-xs">Course</th>
+                                  <th className="pb-2 font-medium text-text-muted text-xs">Amount</th>
+                                  <th className="pb-2 font-medium text-text-muted text-xs">Status</th>
+                                  <th className="pb-2 font-medium text-text-muted text-xs text-right">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {user.enrollments.map(enr => (
+                                  <tr key={enr.course_id} className="border-b border-border/20 last:border-0">
+                                    <td className="py-2.5 text-text-secondary text-xs font-medium">{enr.course_title}</td>
+                                    <td className="py-2.5 text-success text-xs font-medium">₹{enr.amount}</td>
+                                    <td className="py-2.5">
+                                      {enr.has_access ? (
+                                        <span className="inline-block px-2 py-0.5 bg-success/10 text-success rounded text-[10px] font-bold uppercase">Active</span>
+                                      ) : (
+                                        <span className="inline-block px-2 py-0.5 bg-error/10 text-error rounded text-[10px] font-bold uppercase">Revoked</span>
+                                      )}
+                                    </td>
+                                    <td className="py-2.5 text-right">
+                                      <button 
+                                        onClick={() => handleToggleAccess(user.id, enr.course_id, enr.has_access)}
+                                        className={`px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${
+                                          enr.has_access 
+                                          ? "bg-error/10 text-error hover:bg-error/20" 
+                                          : "bg-success/10 text-success hover:bg-success/20"
+                                        }`}
+                                      >
+                                        {enr.has_access ? "Revoke" : "Grant"}
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-text-muted italic">No courses purchased yet.</p>
+                        )}
+                      </div>
                     )}
                   </div>
                 ))}

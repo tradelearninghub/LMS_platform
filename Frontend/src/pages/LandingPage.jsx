@@ -13,7 +13,7 @@ export default function LandingPage() {
       const { data } = await supabase
         .from('courses')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('display_order', { ascending: true })
         .limit(3);
         
       if (data) {
