@@ -76,6 +76,60 @@ app.post('/api/send-approval-email', async (req, res) => {
   }
 });
 
+// Route to receive contact form submissions
+app.post('/api/send-contact-email', async (req, res) => {
+  const { name, email, subject, message } = req.body;
+
+  if (!name || !email || !subject || !message) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "smtp.ethereal.email",
+      port: process.env.SMTP_PORT || 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER || "test",
+        pass: process.env.SMTP_PASS || "test",
+      },
+    });
+
+    if (process.env.SMTP_USER) {
+      await transporter.sendMail({
+        from: `"Trade Learning Hub" <${process.env.SMTP_USER}>`,
+        to: process.env.SMTP_USER, // Send to admin
+        replyTo: email,
+        subject: `Contact Form: ${subject}`,
+        text: `Name: ${name}\nEmail: ${email}\nSubject: ${subject}\n\nMessage:\n${message}`,
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; max-width: 600px;">
+            <h2 style="color: #2563eb; margin-bottom: 20px;">New Contact Form Submission</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;">Name</td><td style="padding: 8px 0; font-weight: 600;">${name}</td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;">Email</td><td style="padding: 8px 0;"><a href="mailto:${email}" style="color: #2563eb;">${email}</a></td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;">Subject</td><td style="padding: 8px 0; font-weight: 500;">${subject}</td></tr>
+            </table>
+            <hr style="margin: 16px 0; border: none; border-top: 1px solid #e2e8f0;" />
+            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-top: 12px;">
+              <p style="color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Message</p>
+              <p style="color: #1e293b; line-height: 1.6; white-space: pre-wrap;">${message}</p>
+            </div>
+          </div>
+        `,
+      });
+      console.log(`Contact email from ${email} forwarded to admin`);
+    } else {
+      console.log(`[MOCK CONTACT] From: ${name} (${email}) | Subject: ${subject} | Message: ${message}`);
+    }
+
+    res.json({ success: true, message: 'Message sent successfully' });
+  } catch (error) {
+    console.error("Error sending contact email:", error);
+    res.status(500).json({ error: "Failed to send message" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

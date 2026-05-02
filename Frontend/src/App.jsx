@@ -16,6 +16,7 @@ import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import RefundPage from "./pages/RefundPage";
 import ResearchPage from "./pages/ResearchPage";
+import ContactPage from "./pages/ContactPage";
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/refund-policy" element={<RefundPage />} />
           <Route path="/research" element={<ResearchPage />} />
+          <Route path="/contact" element={<ContactPage />} />
 
           {/* Protected: Authenticated Users */}
           <Route

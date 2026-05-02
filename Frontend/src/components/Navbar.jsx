@@ -35,6 +35,12 @@ export default function Navbar() {
           >
             Research
           </Link>
+          <Link
+            to="/contact"
+            className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors duration-300 whitespace-nowrap"
+          >
+            Contact
+          </Link>
 
           {user && (
             <Link

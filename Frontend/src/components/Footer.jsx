@@ -11,14 +11,22 @@ export default function Footer() {
             <Link to="/" className="text-xl font-semibold tracking-tight text-text-primary mb-4 block hover:text-accent transition-colors">
               Trade Learning Hub
             </Link>
-            <p className="text-text-muted leading-relaxed max-w-sm">
+            <p className="text-text-muted leading-relaxed max-w-sm mb-6">
               Trade Learning Hub is an online platform dedicated to providing high-quality trading and skill-based courses to help learners grow and succeed in financial markets.
             </p>
+            {/* Disclaimer Banner */}
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl max-w-sm">
+              <p className="text-[10px] text-amber-700 leading-relaxed">
+                <strong className="text-amber-800">Disclaimer:</strong> We are <strong>not SEBI registered advisors</strong>. All content is purely educational. Trading involves significant risk — you can lose some or all of your capital. Past performance is not indicative of future results.
+              </p>
+            </div>
           </div>
           <div>
             <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider mb-4">Platform</h3>
             <ul className="space-y-3">
               <li><Link to="/courses" className="text-text-secondary hover:text-accent transition-colors">Courses</Link></li>
+              <li><Link to="/research" className="text-text-secondary hover:text-accent transition-colors">Research</Link></li>
+              <li><Link to="/contact" className="text-text-secondary hover:text-accent transition-colors">Contact Us</Link></li>
               {user ? (
                 <li><Link to="/dashboard" className="text-text-secondary hover:text-accent transition-colors">Dashboard</Link></li>
               ) : (
@@ -35,11 +43,16 @@ export default function Footer() {
             </ul>
           </div>
         </div>
-        <div className="border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between">
-          <p className="text-sm text-text-muted">
-            &copy; {new Date().getFullYear()} Trade Learning Hub. All rights reserved.
-          </p>
-          <div className="flex gap-4 mt-4 md:mt-0 text-text-muted">
+        <div className="border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-text-muted">
+              &copy; {new Date().getFullYear()} Trade Learning Hub. All rights reserved.
+            </p>
+            <p className="text-[10px] text-text-muted/60 mt-1">
+              Trading in financial markets involves risk. Not SEBI registered. For educational purposes only.
+            </p>
+          </div>
+          <div className="flex gap-4 text-text-muted">
             <a href="#" className="hover:text-accent transition-colors">
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>
             </a>
