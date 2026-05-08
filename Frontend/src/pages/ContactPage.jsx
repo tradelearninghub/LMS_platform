@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 export default function ContactPage() {
-  const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", message: "" });
   const [status, setStatus] = useState(null); // 'loading' | 'success' | 'error'
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -19,7 +19,7 @@ export default function ContactPage() {
 
       if (res.ok) {
         setStatus("success");
-        setForm({ name: "", email: "", subject: "", message: "" });
+        setForm({ name: "", email: "", phone: "", subject: "", message: "" });
       } else {
         setStatus("error");
       }
@@ -124,6 +124,14 @@ export default function ContactPage() {
                         className="w-full px-4 py-3 bg-surface-raised border border-border rounded-xl text-sm text-text-primary placeholder:text-text-muted/40 focus:border-accent/50 focus:outline-none transition-colors"
                       />
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-muted uppercase tracking-widest mb-2">Phone Number</label>
+                    <input
+                      name="phone" type="tel" required value={form.phone} onChange={handleChange}
+                      placeholder="+91 9876543210"
+                      className="w-full px-4 py-3 bg-surface-raised border border-border rounded-xl text-sm text-text-primary placeholder:text-text-muted/40 focus:border-accent/50 focus:outline-none transition-colors"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-text-muted uppercase tracking-widest mb-2">Subject</label>

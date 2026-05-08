@@ -36,14 +36,13 @@ app.post('/api/send-approval-email', async (req, res) => {
   }
 
   try {
-    // Generate a test account if you don't have SMTP credentials set in .env
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.ethereal.email",
-      port: process.env.SMTP_PORT || 587,
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: parseInt(process.env.SMTP_PORT) || 587,
       secure: false, // true for 465, false for other ports
       auth: {
-        user: process.env.SMTP_USER || "test", // Replace with real credentials in .env
-        pass: process.env.SMTP_PASS || "test", // Replace with real credentials in .env
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
       },
     });
 
@@ -78,36 +77,40 @@ app.post('/api/send-approval-email', async (req, res) => {
 
 // Route to receive contact form submissions
 app.post('/api/send-contact-email', async (req, res) => {
-  const { name, email, subject, message } = req.body;
+  const { name, email, phone, subject, message } = req.body;
 
-  if (!name || !email || !subject || !message) {
+  if (!name || !email || !phone || !subject || !message) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
+  // The recipient email for contact form submissions
+  const CONTACT_RECIPIENT = 'tradelearninghub@gmail.com';
+
   try {
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.ethereal.email",
-      port: process.env.SMTP_PORT || 587,
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: parseInt(process.env.SMTP_PORT) || 587,
       secure: false,
       auth: {
-        user: process.env.SMTP_USER || "test",
-        pass: process.env.SMTP_PASS || "test",
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
       },
     });
 
-    if (process.env.SMTP_USER) {
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
       await transporter.sendMail({
         from: `"Trade Learning Hub" <${process.env.SMTP_USER}>`,
-        to: process.env.SMTP_USER, // Send to admin
+        to: CONTACT_RECIPIENT,
         replyTo: email,
         subject: `Contact Form: ${subject}`,
-        text: `Name: ${name}\nEmail: ${email}\nSubject: ${subject}\n\nMessage:\n${message}`,
+        text: `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\nSubject: ${subject}\n\nMessage:\n${message}`,
         html: `
           <div style="font-family: sans-serif; padding: 20px; max-width: 600px;">
             <h2 style="color: #2563eb; margin-bottom: 20px;">New Contact Form Submission</h2>
             <table style="width: 100%; border-collapse: collapse;">
               <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;">Name</td><td style="padding: 8px 0; font-weight: 600;">${name}</td></tr>
               <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;">Email</td><td style="padding: 8px 0;"><a href="mailto:${email}" style="color: #2563eb;">${email}</a></td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;">Phone</td><td style="padding: 8px 0; font-weight: 500;">${phone}</td></tr>
               <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;">Subject</td><td style="padding: 8px 0; font-weight: 500;">${subject}</td></tr>
             </table>
             <hr style="margin: 16px 0; border: none; border-top: 1px solid #e2e8f0;" />
@@ -118,9 +121,9 @@ app.post('/api/send-contact-email', async (req, res) => {
           </div>
         `,
       });
-      console.log(`Contact email from ${email} forwarded to admin`);
+      console.log(`Contact email from ${email} forwarded to ${CONTACT_RECIPIENT}`);
     } else {
-      console.log(`[MOCK CONTACT] From: ${name} (${email}) | Subject: ${subject} | Message: ${message}`);
+      console.log(`[MOCK CONTACT] From: ${name} (${email}, ${phone}) | Subject: ${subject} | Message: ${message}`);
     }
 
     res.json({ success: true, message: 'Message sent successfully' });

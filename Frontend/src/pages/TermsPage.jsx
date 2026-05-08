@@ -13,17 +13,6 @@ const TermsPage = () => {
         <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-text-primary leading-tight mb-4">Terms of Service</h1>
         <p className="text-text-muted mb-10">Last updated: May 01, 2026</p>
 
-        {/* SEBI Disclaimer */}
-        <div className="mb-10 p-5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
-          <svg className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
-          <div>
-            <p className="text-sm font-semibold text-amber-800 mb-1">Important Regulatory Disclaimer</p>
-            <p className="text-sm text-amber-700 leading-relaxed">
-              Trade Learning Hub is <strong>not a SEBI (Securities and Exchange Board of India) registered investment advisor</strong>. All content provided on this platform is strictly for <strong>educational purposes only</strong>. Trading in financial markets involves substantial risk of loss and is not suitable for all investors. You should not invest money that you cannot afford to lose.
-            </p>
-          </div>
-        </div>
-
         <div className="space-y-10">
           <section>
             <h2 className="text-xl font-semibold text-text-primary mb-3">1. Acceptance of Terms</h2>

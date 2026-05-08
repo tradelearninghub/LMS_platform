@@ -3,6 +3,7 @@ import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -22,6 +23,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <div className="flex flex-col min-h-screen">
           <Navbar />
 

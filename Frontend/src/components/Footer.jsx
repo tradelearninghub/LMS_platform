@@ -11,22 +11,16 @@ export default function Footer() {
             <Link to="/" className="text-xl font-semibold tracking-tight text-text-primary mb-4 block hover:text-accent transition-colors">
               Trade Learning Hub
             </Link>
-            <p className="text-text-muted leading-relaxed max-w-sm mb-6">
+            <p className="text-text-muted leading-relaxed max-w-sm">
               Trade Learning Hub is an online platform dedicated to providing high-quality trading and skill-based courses to help learners grow and succeed in financial markets.
             </p>
-            {/* Disclaimer Banner */}
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl max-w-sm">
-              <p className="text-[10px] text-amber-700 leading-relaxed">
-                <strong className="text-amber-800">Disclaimer:</strong> We are <strong>not SEBI registered advisors</strong>. All content is purely educational. Trading involves significant risk — you can lose some or all of your capital. Past performance is not indicative of future results.
-              </p>
-            </div>
           </div>
           <div>
             <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider mb-4">Platform</h3>
             <ul className="space-y-3">
               <li><Link to="/courses" className="text-text-secondary hover:text-accent transition-colors">Courses</Link></li>
               <li><Link to="/research" className="text-text-secondary hover:text-accent transition-colors">Research</Link></li>
-              <li><Link to="/contact" className="text-text-secondary hover:text-accent transition-colors">Contact Us</Link></li>
+              <li><Link to="/contact" className="text-text-secondary hover:text-accent transition-colors">Get in Touch</Link></li>
               {user ? (
                 <li><Link to="/dashboard" className="text-text-secondary hover:text-accent transition-colors">Dashboard</Link></li>
               ) : (
@@ -48,9 +42,7 @@ export default function Footer() {
             <p className="text-sm text-text-muted">
               &copy; {new Date().getFullYear()} Trade Learning Hub. All rights reserved.
             </p>
-            <p className="text-[10px] text-text-muted/60 mt-1">
-              Trading in financial markets involves risk. Not SEBI registered. For educational purposes only.
-            </p>
+
           </div>
           <div className="flex gap-4 text-text-muted">
             <a href="#" className="hover:text-accent transition-colors">
