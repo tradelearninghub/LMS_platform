@@ -285,7 +285,7 @@ export default function AdminPage() {
 
     // 3. Send email via our backend
     try {
-      await fetch(`${import.meta.env.VITE_API_URL.replace(/\/+$/, '')}/api/send-approval-email`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/send-approval-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
