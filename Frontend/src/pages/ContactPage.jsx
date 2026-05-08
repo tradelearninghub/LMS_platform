@@ -11,10 +11,22 @@ export default function ContactPage() {
     setStatus("loading");
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/send-contact-email`, {
+      // Create FormData for Web3Forms
+      const formData = new FormData();
+      // Use the Web3Forms API key from environment variables
+      formData.append("access_key", import.meta.env.VITE_WEB3FORMS_KEY || "YOUR_ACCESS_KEY_HERE");
+      formData.append("name", form.name);
+      formData.append("email", form.email);
+      formData.append("phone", form.phone);
+      formData.append("subject", form.subject);
+      formData.append("message", form.message);
+      
+      // Optional: Add a custom subject for the email you receive
+      formData.append("subject", `New Contact from ${form.name} - ${form.subject}`);
+
+      const res = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: formData,
       });
 
       if (res.ok) {
