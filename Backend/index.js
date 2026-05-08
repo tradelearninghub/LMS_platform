@@ -49,7 +49,7 @@ app.post('/api/send-approval-email', async (req, res) => {
     // We only send if SMTP_USER is configured, otherwise just log it to prevent crashes with fake ethereal login
     if (process.env.SMTP_USER) {
       await transporter.sendMail({
-        from: '"Trade Learning Hub" <admin@tradelearninghub.com>',
+        from: `"Trade Learning Hub" <${process.env.SMTP_USER}>`,
         to: email,
         subject: `Access Granted: ${courseTitle}`,
         text: `Your payment for "${courseTitle}" has been verified! You now have full access to the course. Log in to your dashboard to start learning.`,
